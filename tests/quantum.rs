@@ -247,6 +247,9 @@ pub struct GateAttr {
     c: Vec<u32>,
     q: Vec<u32>,
     d: bool,
+    // u: bool,
+    // r: bool,
+    // r_v: f64,
 }
 
 
@@ -326,6 +329,24 @@ impl Gate {
         }
     }
 
+    fn is_unitary(&self) -> bool {
+        match self {
+            Gate::X(x) => {
+                x.is_unitary()
+            },
+            Gate::I => {
+                true
+            },
+            Gate::Other(s) => {
+                false
+            },
+            _ => {
+                false
+            }
+        }
+    }
+
+
     fn get_qubits(&self) -> Vec<u32> {
         match self {
             Gate::X(x) => {
@@ -342,7 +363,6 @@ impl Gate {
             }
         }
     }
-
     
 
     fn get_ctrl(&self) -> Vec<u32> {
@@ -474,12 +494,14 @@ fn _is_occ_identity(v: &Gate, w: &Gate) -> bool {
     a.intersect(b).len() == a.len() && a.intersect(b).len() == b.len()
 }
 
+
 fn _is_ctrl_identity(v: &Gate, w: &Gate) -> bool {
     let a = v.get_attr().c;
     let b = w.get_attr().c;
 
     a.intersect(b).len() == a.len() && a.intersect(b).len() == b.len()
 }
+
 
 fn _is_qubit_identity(v: &Gate, w: &Gate) -> bool {
     let a = v.get_attr().q;
@@ -488,20 +510,21 @@ fn _is_qubit_identity(v: &Gate, w: &Gate) -> bool {
     a.intersect(b).len() == a.len() && a.intersect(b).len() == b.len()
 }
 
-fn _is_gate_identity(v: &Gate, w: &Gate) -> bool {
-    _is_ctrl_identity(v, w) && _is_occ_identity(v, w) &&
-        v.get_type() == w.get_type() && v.get_dagger() == w.get_dagger()
-}
 
 fn _is_gate_identity(v: &Gate, w: &Gate) -> bool {
     _is_ctrl_identity(v, w) && _is_occ_identity(v, w) &&
         v.get_type() == w.get_type() && v.get_dagger() == w.get_dagger()
 }
+
+
+fn _is_gate_daggered(v: &Gate, w: &Gate) -> bool {
+    _is_ctrl_identity(v, w) && _is_occ_identity(v, w) &&
+        v.get_type() == w.get_type() && v.get_dagger() != w.get_dagger()
+}
+
 
 fn _is_cancel(v: &Gate, w: &Gate) -> bool {
-    
-   
-    true
+    _is_gate_identity(v, w) && v.is_unitary() || _is_gate_daggered(v, w)
 }
 
 fn is_commpute(v: &str, w: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
@@ -540,32 +563,6 @@ fn is_commpute(v: &str, w: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
 }
 
 
-
-
-// fn _is_cancel(a: &Gate, b: &Gate) -> bool {
-    
-
-//     if let Some((v_g, v_e)) = egraph[subst[v]].data.as_ref() {
-//         a = v_g.get_attr();
-//     } else {
-//         return false;
-//     }
-
-//     if let Some((w_g, w_e)) = egraph[subst[v]].data.as_ref() {
-//         w_attr = w_g.get_attr();
-//     } else {
-//         return false;
-//     }
-
-//     if v_attr.q.intersect(w_attr.q).len() > 0 {
-//         return false;
-//     }
-    
-
-//     true
-// }
-
-
 fn is_cancel(v: &str, w: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
     let v = v.parse().unwrap();
     let w = w.parse().unwrap();
@@ -575,38 +572,31 @@ fn is_cancel(v: &str, w: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
             return false;
         }
         
-        // 一个 是 gate 一个 是 None，返回false
-        if egraph[subst[v]].data.is_some() && !egraph[subst[w]].data.is_some() {
-            return false;
-        }
-        if egraph[subst[w]].data.is_some() && !egraph[subst[v]].data.is_some() {
-            return false;
-        }
+        // // 一个 是 gate 一个 是 None，返回false
+        // if egraph[subst[v]].data.is_some() && !egraph[subst[w]].data.is_some() {
+        //     return false;
+        // }
+        // if egraph[subst[w]].data.is_some() && !egraph[subst[v]].data.is_some() {
+        //     return false;
+        // }
 
-        let v_attr: GateAttr;
-        let w_attr: GateAttr;
+        let v_gate: &Gate;
+        let w_gate: &Gate;
 
         if let Some((v_g, v_e)) = egraph[subst[v]].data.as_ref() {
-            v_attr = v_g.get_attr();
+            v_gate = &v_g;
         } else {
             return false;
         }
 
         if let Some((w_g, w_e)) = egraph[subst[v]].data.as_ref() {
-            w_attr = w_g.get_attr();
+            w_gate = &w_g;
         } else {
             return false;
         }
-
-        if v_attr.q.intersect(w_attr.q).len() > 0 {
-            return false;
-        }
-        
-
-        true
+        _is_cancel(v_gate, v_gate)
     }
 }
-
 
 
 
