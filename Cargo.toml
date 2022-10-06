@@ -32,6 +32,9 @@ vectorize = { version = "0.2.0", optional = true }
 # for the reports feature
 serde_json = { version = "1.0.81", optional = true }
 
+regex = "1"
+array_tool = "1.0.0"
+
 
 [dev-dependencies]
 ordered-float = "3.0.0"
